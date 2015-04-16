@@ -1,6 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using DrawTogether.Models;
+using System.Linq;
+
 namespace DrawTogether.Managers
 {
     public class GameManager
@@ -18,46 +19,46 @@ namespace DrawTogether.Managers
             CreateGame("DefaultGame");
         }
 
+        public List<string> GetGameGuids()
+        {
+            List<string> guids = Games.Select(g => g.Value.Guid).ToList();
+            return guids;
+        }
+
+        public List<User> GetGameUsers(string gameGuid)
+        {
+            return Games[gameGuid].GetUsers();
+        }
+
         public void CreateGame(string gameName)
         {
             Game game = new Game(gameName);
-            Games.Add(gameName, game);
+            Games.Add(game.Guid, game);
         }
 
-        public void HandleMessage(string connectionId, string op, object[] parameters)
+        public void AddPlayerToGame(string gameGuid, User user)
         {
-            var userGame = GetGameByConnectionId(connectionId);
-            if(userGame == null)
-            {
-                return;
-            }
-
-            switch(op)
-            {
-                case OP_GETUSERSINGAME:
-                    break;
-                case OP_GETCANVAS:
-                    break;
-                case OP_CLEARCANVAS:
-                    break;
-                case OP_SYNCDRAW:
-                    break;
-            }
+            Games[gameGuid].AddUserToGame(user);
         }
 
-        public Game GetGameByConnectionId(string connectionId)
+        public void RemovePlayerFromGame(string gameGuid, string connectionId)
         {
-            return Games["DefaultGame"];
+            Games[gameGuid].RemoveUserFromGame(connectionId);
         }
 
-        public void AddPlayerToGame(string gameName, string connectionId, string username)
+        public string GetCanvasObjects(string gameGuid)
         {
-            Games[gameName].AddUserToGame(connectionId, username);
+            return Games[gameGuid].GetCanvasObjects();
         }
 
-        public void RemovePlayerFromGame(string gameName, string connectionId)
+        public void AddObjectToCanvas(string gameGuid, string obj)
         {
-            Games[gameName].RemoveUserFromGame(connectionId);
+            Games[gameGuid].AddObjectToCanvas(obj);
+        }
+
+        public void ClearCanvas(string gameGuid)
+        {
+            Games[gameGuid].ClearCanvas();
         }
     }
 }

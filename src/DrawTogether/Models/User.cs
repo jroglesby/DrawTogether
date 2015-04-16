@@ -1,4 +1,4 @@
-﻿using System;
+﻿using System.Runtime.Serialization;
 
 namespace DrawTogether.Models
 {
@@ -6,11 +6,14 @@ namespace DrawTogether.Models
     {
         public string ConnectionId { get; set; }
         public string Username { get; set; }
+        [IgnoreDataMember]
+        public Game Game { get; set; }
 
         public User(string connectionId, string username)
         {
-            ConnectionId = ConnectionId;
+            ConnectionId = connectionId;
             Username = username;
+            Game = null;
         }
     }
 }

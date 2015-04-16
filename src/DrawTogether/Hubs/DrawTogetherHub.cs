@@ -10,63 +10,67 @@ namespace DrawTogether.Hubs
     [HubName("DrawTogether")]
     public class DrawTogetherHub : Hub
     {
-        private static List<User> Users = new List<User>();
-        private static string SerializedCanvas = "";
         private static GameManager _gameManager = new GameManager();
+        private static UserManager _userManager = new UserManager();
+
+        private string GetGameGuid()
+        {
+            return Context.Request.Cookies["GameGuid"];
+        }
+        private string GetUserName()
+        {
+            return Context.Request.Cookies["username"];
+        }
+
 
         public void Send(string name, string message)
         {
             Clients.All.addNewMessageToPage(name, message);
         }
 
-        public void handleMessage(string op, object[] parameters)
+        public void AddObjectToCanvas(string serializedObj)
         {
-            string connectionId = Context.ConnectionId;
-            _gameManager.HandleMessage(connectionId, op, parameters);
+            string gameGuid = GetGameGuid();
+            _gameManager.AddObjectToCanvas(gameGuid, serializedObj);
+            Clients.OthersInGroup(gameGuid).addObjectToCanvas(serializedObj);
         }
 
-        public void SyncDraw(string serializedDrawing)
+        public void GetCanvasObjects()
         {
-            Clients.Others.syncDrawing(serializedDrawing);
-            if(SerializedCanvas != "")
-            {
-                SerializedCanvas += ",";
-            }
-            SerializedCanvas += serializedDrawing;
-        }
-
-        public void GetCurrentCanvas()
-        {
-            var serializedCanvas = "[" + SerializedCanvas + "]";
-            Clients.Caller.receiveCurrentCanvas(serializedCanvas);
+            string gameGuid = GetGameGuid();
+            Clients.Caller.receiveCanvasObjects(_gameManager.GetCanvasObjects(gameGuid));
         }
 
         public void ClearCanvas()
         {
-            SerializedCanvas = "";
-            Clients.Others.clearCanvas();
+            string gameGuid = GetGameGuid();
+            _gameManager.ClearCanvas(gameGuid);
+            Clients.OthersInGroup(gameGuid).clearCanvas();
         }
 
         public void GetOnlineUsers()
         {
-            Clients.Caller.receiveOnlineUsers(Users);
+            string gameGuid = GetGameGuid();
+            List<User> users = _gameManager.GetGameUsers(gameGuid);
+            Clients.Caller.receiveOnlineUsers(users);
         }
 
         public override Task OnConnected()
         {
-            Users.Add(new User() { ConnectionId = Context.ConnectionId, Username = Context.Request.Cookies["username"], Online = true });
-            Clients.Others.userConnected(Context.Request.Cookies["username"]);
+            User user = _userManager.UserConnected(Context.ConnectionId, GetUserName());
+            string gameGuid = _gameManager.GetGameGuids()[0];
+            _gameManager.AddPlayerToGame(gameGuid, user);
+            Groups.Add(user.ConnectionId, gameGuid);
+            Clients.Caller.setGameGuid(gameGuid);
+            Clients.OthersInGroup(user.Game.Guid).userConnected(GetUserName());
             return base.OnConnected();
         }
 
         public override Task OnDisconnected(bool stopCalled)
         {
-            User user = Users.Find(u => u.ConnectionId == Context.ConnectionId);
-            if (user != null)
-            {
-                Users.Remove(user);
-                Clients.Others.userDisconnected(user.Username);
-            }
+            User user = _userManager.UserDisconnected(Context.ConnectionId);
+            _gameManager.RemovePlayerFromGame(user.Game.Guid, user.ConnectionId);
+            Clients.OthersInGroup(user.Game.Guid).userDisconnected(user.Username);
             return base.OnDisconnected(stopCalled);
         }
     }

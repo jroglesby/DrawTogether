@@ -66,7 +66,11 @@
                     + '</strong>: ' + htmlEncode(message) + '</li>');
             };
 
-            drawTogether.client.syncDrawing = function (serializedDrawing) {
+            drawTogether.client.setGameGuid = function(guid) {
+                document.cookie = "GameGuid=" + guid;
+            }
+
+            drawTogether.client.addObjectToCanvas = function (serializedDrawing) {
                 var object = JSON.parse(serializedDrawing);
                 fabric.util.enlivenObjects([object], function(objects) {
                     var origRenderOnAddRemove = canvas.renderOnAddRemove;
@@ -80,7 +84,7 @@
                 });
             };
 
-            drawTogether.client.receiveCurrentCanvas = function(serializedDrawing) {
+            drawTogether.client.receiveCanvasObjects = function(serializedDrawing) {
                 var object = JSON.parse(serializedDrawing);
                 fabric.util.enlivenObjects(object, function(objects) {
                     var origRenderOnAddRemove = canvas.renderOnAddRemove;
@@ -124,7 +128,7 @@
             // Start the connection.
             $.connection.hub.start().done(function () {
                 drawTogether.server.getOnlineUsers();
-                drawTogether.server.getCurrentCanvas();
+                drawTogether.server.getCanvasObjects();
                 $('#sendmessage').click(function () {
                     // Call the Send method on the hub.
                     drawTogether.server.send(username, $('#message').val());
@@ -134,7 +138,7 @@
 
                 canvas.on('path:created', function(event) {
                     var json = JSON.stringify(event.path);
-                    drawTogether.server.syncDraw(json);
+                    drawTogether.server.addObjectToCanvas(json);
                 });
 
                 $('#clearButton').click(function() {
